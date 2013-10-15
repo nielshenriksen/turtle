@@ -1,0 +1,195 @@
+-- Turtle to sort the serums from an isolator recycling
+--   the ones that we already have enough of
+-- Requires: Open Peripherals
+-- By ToLazyToThink
+--
+-- http://forum.feed-the-beast.com/threads/automated-isolator.29888/
+
+-- NOTES:
+--  FUEL: If you have more than one serum chest (including the "keep"
+--    chest) the turtle will use fuel to move up and check the extra
+--    chest.  This program doesn't check fuel levels, so make sure 
+--    you give it plenty of fuel before you start it.
+--
+--  open peripherals uses compass directions, so it matters where you 
+--    build things on the compass, not just in relation to the turtle. 
+--
+-- If you are using something other than the direwolf20 1.5 v1.1.2 pack
+--   you may need to change the serumID to match the item id of filled 
+--   serums in your pack.
+--
+
+-- Turtles used 1 based slot indexes, but openp uses 0 based
+local keepSlot = 0
+local dumpSlot = 1
+
+-- direction of the various blocks relative to the turtle
+local chestSide = "left"
+local dumpSide = "bottom"
+local isoSide = "right"
+
+-- turtle is <compass dir> of the <isoloator|serumchest|dumpchest>
+local turtleIsoDir = "east"
+local turtleChestDir= "west"
+local turtleDumpDir = "up"
+
+-- Item ID of a filled serum (all serums except the empty use 
+--  the same ID)
+local serumId = 8803
+
+-- The number of serum holding chest, this includes the bottom
+--   "keep" chest, that, at least in my setup, is just an 
+--   AE import chest
+local numChest = 4
+
+-- Maximum number of copies of the same serum to keep, this will
+--  not affect already stored serums, just new ones from the 
+--  isolator
+local maxKeepSerums = 2
+
+local knownSerums = nil
+
+-- Check the isolator for new serums returns a table 
+--   with the serum name as the key, and an array of 
+--   slots as the value
+function checkIsolator()
+  local iso = peripheral.wrap(isoSide)
+  
+  local ret = {}
+  local n = iso.getSizeInventory()
+  for i = 0,(n-1) do
+    local itemInfo = iso.getStackInSlot(i)
+    if itemInfo ~= nil and itemInfo['id'] == serumId then
+      local slots = ret[itemInfo["name"]]
+      if slots == nil then
+        slots = {}
+        ret[itemInfo["name"]] = slots
+      end
+      slots[#slots + 1] = i
+    end 
+  end
+  
+  return ret
+end
+
+function addSerums(serums)
+  local chest = peripheral.wrap(chestSide)
+  
+  local n = chest.getSizeInventory()
+  for i = 0,(n-1) do
+    local itemInfo = chest.getStackInSlot(i)
+    if itemInfo ~= nil and itemInfo['id'] == serumId then
+      local count = serums[itemInfo["name"]]
+      if count == nil then
+        count = 0
+      end
+      serums[itemInfo["name"]] = count + itemInfo["qty"]
+    end 
+  end
+end
+
+function findKnownSerums()
+  local ret = {}
+  addSerums(ret)
+  if numChest > 1 then
+    for i = 2,numChest do
+      turtle.up()
+      addSerums(ret)
+    end
+  end
+  while turtle.down() do
+    -- no op
+  end
+  return ret
+end
+
+function isSerumNeeded(name)
+  if knownSerums == nil then
+    knownSerums = findKnownSerums()
+  end
+  
+  local count = knownSerums[name]
+  if count == nil or count < maxKeepSerums then
+    return true
+  else
+    return false
+  end
+end
+
+function keepSerum(name, slot)
+  local iso = peripheral.wrap(isoSide)
+  if iso.pushIntoSlot(turtleIsoDir, slot, 1, keepSlot) > 0 then
+    local chest = peripheral.wrap(chestSide)
+    if chest.pull(turtleChestDir, keepSlot, 1) > 0 then
+      local count = knownSerums[name]    
+      if count == nil then
+        count = 0
+      end
+      knownSerums[name] = count + 1
+      print("added " .. name)
+    else
+      print("failed to pull to keep chest: " .. name)
+    end
+  else
+    print("keep failed to push: " .. name)
+  end
+end
+
+function dumpSerum(name, slot)
+  local iso = peripheral.wrap(isoSide)
+  if iso.pushIntoSlot(turtleIsoDir, slot, 1, dumpSlot) > 0 then
+    local chest = peripheral.wrap(dumpSide)
+    if chest.pull(turtleDumpDir, dumpSlot, 1) > 0 then
+      -- print("dumped " .. name)
+    else
+      print("failed to pull to dump chest: " .. name)
+    end
+  else
+    print("dump failed to push: " .. name)
+  end
+end
+
+function reset()
+  while not turtle.detectDown() do
+    turtle.down()
+  end
+  
+  -- NOTE: turtles start slots at 1, but openp starts at 0
+  if turtle.getItemCount(keepSlot + 1) > 0 then
+    local chest = peripheral.wrap(chestSide)
+    while chest.pull(turtleChestDir, keepSlot, 1) < 1 do
+      print("failed to pull stale keep item")
+      sleep(5)
+    end
+  end
+  
+  -- NOTE: turtles start slots at 1, but openp starts at 0
+  if turtle.getItemCount(dumpSlot + 1) > 0 then
+    local chest = peripheral.wrap(dumpSide)
+    while chest.pull(turtleDumpDir, dumpSlot, 1) < 1 do
+      print("failed to pull stale dump item")
+      sleep(5)
+    end
+  end
+end
+
+function main()
+  reset()
+  while true do
+    local newSerums = checkIsolator()
+    for name, slots in pairs(newSerums) do
+      if isSerumNeeded(name) then
+        for i, slot in ipairs(slots) do
+          keepSerum(name, slot)
+        end
+      else
+        for i, slot in ipairs(slots) do
+          dumpSerum(name, slot)
+        end
+      end
+    end
+    sleep(1)
+  end
+end
+
+main()

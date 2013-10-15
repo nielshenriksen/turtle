@@ -1,0 +1,35 @@
+-- global script for testing
+local logFileName = "log.txt"
+
+local logFile = fs.open(logFileName, "w")
+
+function log(msg)
+  msg = msg or ""
+  logFile.write(tostring(msg))
+  logFile.flush()
+  
+  -- write log to screen
+  io.write(msg)
+end
+function logLine(msg)
+  msg = msg or ""
+  logFile.write(msg.."\n")
+  logFile.flush()
+
+  -- write log to screen
+  io.write(msg.."\n")
+end
+
+function getItemsInChest(side)
+  local chest = peripheral.wrap(side)
+
+  local n = chest.getSizeInventory()
+  logLine("Chest has "..n.." slots")
+
+  for i = 0,(n-1) do
+    local itemInfo = chest.getStackInSlot(i)
+    if itemInfo ~= nil then
+		logLine(itemInfo["name"])
+    end 
+  end
+end
