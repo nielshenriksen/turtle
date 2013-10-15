@@ -33,3 +33,33 @@ function getItemsInChest(side)
     end 
   end
 end
+
+function redstonePulse(side)
+	redstone.setOutput(side, true)
+	os.sleep(2)
+	redstone.setOutput(side, false)
+end
+
+function redstoneOn(side)
+	redstone.setOutput(side, true)
+end
+
+function redstoneOff(side)
+	redstone.setOutput(side, false)
+end
+
+function turtleEmptyInventory()
+	-- place enderchest in slot 1
+	if turtle.getItemCount(16) ~= 0 then
+		turtle.dig()
+		turtle.select(1)
+		turtle.place()
+		for i = 2,16 do
+			turtle.select(i)
+			turtle.drop()
+		end
+		turtle.select(1)
+		turtle.dig()
+	end
+end
+
