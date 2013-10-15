@@ -26,12 +26,20 @@ function getItemsInChest(side)
   local n = chest.getSizeInventory()
   logLine("Chest has "..n.." slots")
 
-  for i = 0,(n-1) do
-    local itemInfo = chest.getStackInSlot(i)
-    if itemInfo ~= nil then
-		logLine(itemInfo["name"])
-    end 
-  end
+  --for i = 0,(n-1) do
+  --  local itemInfo = chest.getStackInSlot(i)
+  --  if itemInfo ~= nil then
+	--	logLine(itemInfo["name"])
+	--	os.sleep(1)
+  --  end 
+  --end
+  
+	local slots = chest.getAllStacks()
+	for i,j in pairs(slots) do
+		slot = i
+		--name = j["destination"]
+		logLine("In slot "..i.." I found "..j)
+	end  
 end
 
 function redstonePulse(side)
@@ -63,3 +71,4 @@ function turtleEmptyInventory()
 	end
 end
 
+getItemsInChest("right")

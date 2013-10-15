@@ -10,7 +10,7 @@ local branch = "master"
 
 local files = {
   {
-    name = "bee",
+    name = "master",
     url = "https://raw.github.com/nielshenriksen/turtle/"..branch.."/master.txt"
   }
 }
